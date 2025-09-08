@@ -1,4 +1,4 @@
-// scripts/migrate-chord-data-service.js
+// song_data_processing/chord_processing/build_chord_data_from_console_log_chord_captions.js
 import { createClient } from '@supabase/supabase-js'
 
 // Use service role key to bypass RLS

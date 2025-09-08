@@ -3,7 +3,7 @@
  * Demonstrates the naming pattern and generates example URLs
  */
 
-import { demonstrateNamingConvention, generateChordURL, getAllChordVariations } from './chord_naming_convention.js';
+import { demonstrateNamingConvention, generateChordURL, getAllChordVariations } from '../../../song_data_processing/chord_processing/chord_naming_convention.js';
 
 console.log('🎸 Testing Chord Naming Convention System\n');
 

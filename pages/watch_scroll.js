@@ -224,7 +224,7 @@ export default function Watch() {
       // Now get chord captions for this favorite, joined with chord_positions via chord_position_id
       const { data, error } = await supabase
         .from('chord_captions')
-        .select('*, chord_positions:chord_position_id (id, chord_position_full_name, aws_svg_url_dark, aws_svg_url_light)')
+        .select('*, chord_position:chord_positions!fk_chord_captions_chord_position_id (id, chord_position_full_name, aws_svg_url_dark, aws_svg_url_light)')
         .eq('favorite_id', favoriteData.id)
         .order('start_time', { ascending: true })
       
@@ -335,6 +335,9 @@ export default function Watch() {
   // YouTube API loading states
   const [youtubeAPILoading, setYoutubeAPILoading] = useState(false)
   const [youtubeAPIError, setYoutubeAPIError] = useState(false)
+  
+  // Ticking state for current video time (drives chord SVG updates)
+  const [currentTimeSeconds, setCurrentTimeSeconds] = useState(0)
 
   // Feature Gates states
   const [featureGates, setFeatureGates] = useState(null)
@@ -845,6 +848,22 @@ export default function Watch() {
       }
     }
   }, [mounted, videoId])
+
+  // Tick current video time for chord grid updates
+  useEffect(() => {
+    if (!playerRef.current || !isPlayerReadyFromUtils(playerRef.current)) return
+    const intervalId = setInterval(() => {
+      try {
+        if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
+          const t = playerRef.current.getCurrentTime()
+          setCurrentTimeSeconds(typeof t === 'number' ? t : 0)
+        }
+      } catch (e) {
+        // ignore
+      }
+    }, 500)
+    return () => clearInterval(intervalId)
+  }, [playerRef.current])
 
   // Load video from URL parameters when page loads
   useEffect(() => {
@@ -1487,7 +1506,7 @@ export default function Watch() {
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `url('/images/gt_splashBG_dark.png')`,
+          backgroundImage: `url('/images/gt_splashBG_1200_dark1.png')`,
           width: '100%',
           height: '100%',
           minWidth: '100vw',
@@ -1646,12 +1665,7 @@ export default function Watch() {
                 <div className="h-full p-2 grid grid-cols-3 grid-rows-2 gap-1">
                   {(() => {
                     try {
-                      const nowSeconds = (() => {
-                        if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
-                          return playerRef.current.getCurrentTime()
-                        }
-                        return 0
-                      })()
+                      const nowSeconds = currentTimeSeconds || 0
 
                       const active = (chordCaptions || []).filter((chord) => {
                         if (!chord || !chord.start_time || !chord.end_time) return false
@@ -1662,7 +1676,7 @@ export default function Watch() {
                       // Map to entries with URLs
                       const svgEntries = active
                         .map((c) => {
-                          const pos = c.chord_positions
+                          const pos = c.chord_position
                           const url = pos?.aws_svg_url_dark || null
                           if (!c.chord_position_id || !pos || !url) {
                             if (!pos || !url) {

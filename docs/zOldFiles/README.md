@@ -82,9 +82,9 @@ This directory contains old, redundant, and test files that were moved from the 
 - `components/ChordDiagramManager.js` - Chord display management
 
 ### **AWS Integration (Kept in Original Locations)**
-- `scripts/awsChordUploader.js` - Production S3 upload
-- `scripts/chordLibraryConfig.js` - S3 configuration
-- `scripts/generateChordLibrary.js` - Main library generation
+- `song_data_processing/chord_processing/awsChordUploader.js` - Production S3 upload
+- `song_data_processing/chord_processing/chordLibraryConfig.js` - S3 configuration
+- `song_data_processing/chord_processing/generateChordLibrary.js` - Main library generation
 
 ## 📝 Notes
 

@@ -132,7 +132,7 @@ GuitarMagic is a Next.js SaaS application that enhances YouTube viewing with cus
 
 ### AWS Integration
 
-#### AWS Chord Uploader (`scripts/awsChordUploader.js`)
+#### AWS Chord Uploader (`song_data_processing/chord_processing/awsChordUploader.js`)
 **Purpose**: S3 upload functionality for chord SVG files
 
 **Key Features**:
@@ -141,7 +141,7 @@ GuitarMagic is a Next.js SaaS application that enhances YouTube viewing with cus
 - **Batch Processing**: Handles multiple chord uploads
 - **Error Handling**: Comprehensive error management and retry logic
 
-#### Chord Library Config (`scripts/chordLibraryConfig.js`)
+#### Chord Library Config (`song_data_processing/chord_processing/chordLibraryConfig.js`)
 **Purpose**: S3 configuration and chord library settings
 
 **Key Features**:
@@ -150,7 +150,7 @@ GuitarMagic is a Next.js SaaS application that enhances YouTube viewing with cus
 - **URL Generation**: Creates public URLs for chord SVGs
 - **Environment Management**: Handles different deployment environments
 
-#### Generate Chord Library (`scripts/generateChordLibrary.js`)
+#### Generate Chord Library (`song_data_processing/chord_processing/generateChordLibrary.js`)
 **Purpose**: Main chord library generation script
 
 **Key Features**:

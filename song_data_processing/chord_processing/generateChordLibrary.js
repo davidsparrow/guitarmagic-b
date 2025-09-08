@@ -147,33 +147,166 @@ class ChordLibraryGenerator {
   }
 
   /**
-   * Update database with S3 URLs
+   * Update database with S3 URLs and create chord records
    * @param {Array} uploadResults - Results from S3 upload
    * @returns {Promise<Object>} Database update results
    */
   async updateDatabaseWithURLs(uploadResults) {
-    // This would integrate with your Supabase database
-    // For now, we'll return the results for manual review
-    this.logger.info(`Database update ready for ${uploadResults.length} chord positions`);
-    
-    const updateData = uploadResults
-      .filter(result => result.success)
-      .map(result => ({
-        chordName: result.chord.chordName,
-        positionType: result.chord.positionType,
-        lightThemeURL: result.chord.theme === 'light' ? result.url : null,
-        darkThemeURL: result.chord.theme === 'dark' ? result.url : null,
-        fileSize: result.fileSize,
-        s3Key: result.s3Key
-      }));
-
-    return {
-      success: true,
-      message: 'Database update data prepared',
-      updateData,
-      totalPositions: uploadResults.length,
-      successfulUpdates: updateData.length
-    };
+    try {
+      this.logger.info(`Starting database integration for ${uploadResults.length} chord positions`);
+      
+      // Import Supabase client
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      
+      if (!supabaseUrl || !supabaseServiceKey) {
+        throw new Error('Missing Supabase environment variables');
+      }
+      
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      
+      // Group upload results by chord name
+      const chordGroups = {};
+      uploadResults
+        .filter(result => result.success)
+        .forEach(result => {
+          const chordName = result.chord.chordName;
+          if (!chordGroups[chordName]) {
+            chordGroups[chordName] = [];
+          }
+          chordGroups[chordName].push(result);
+        });
+      
+      const chordVariations = {};
+      let createdVariations = 0;
+      let createdPositions = 0;
+      
+      // Step 1: Create or find chord_variations
+      for (const [chordName, results] of Object.entries(chordGroups)) {
+        this.logger.info(`Processing chord variation: ${chordName}`);
+        
+        // Check if chord_variation already exists
+        const { data: existingVariation, error: checkError } = await supabase
+          .from('chord_variations')
+          .select('id')
+          .eq('chord_name', chordName)
+          .single();
+        
+        if (checkError && checkError.code !== 'PGRST116') {
+          throw checkError;
+        }
+        
+        let variationId;
+        if (existingVariation) {
+          this.logger.info(`Found existing chord_variation: ${chordName}`);
+          variationId = existingVariation.id;
+        } else {
+          // Create new chord_variation
+          const { data: newVariation, error: createError } = await supabase
+            .from('chord_variations')
+            .insert([{ 
+              chord_name: chordName,
+              display_name: chordName,
+              root_note: chordName.replace(/[^A-G#b]/g, ''),
+              chord_type: 'major',
+              difficulty: 'intermediate',
+              category: 'barre_chords',
+              total_variations: 1
+            }])
+            .select()
+            .single();
+          
+          if (createError) throw createError;
+          
+          this.logger.success(`Created new chord_variation: ${chordName}`);
+          variationId = newVariation.id;
+          createdVariations++;
+        }
+        
+        chordVariations[chordName] = variationId;
+        
+        // Step 2: Create chord_positions for each theme
+        for (const result of results) {
+          const { chordName, positionType, theme } = result.chord;
+          // URL encode the chord name for proper S3 URL handling
+          const encodedChordName = encodeURIComponent(chordName);
+          const chordPositionFullName = `${encodedChordName}-${positionType}`;
+          
+          // Check if chord_position already exists
+          const { data: existingPosition, error: checkError } = await supabase
+            .from('chord_positions')
+            .select('id')
+            .eq('chord_name', chordName)
+            .eq('fret_position', positionType)
+            .single();
+          
+          if (checkError && checkError.code !== 'PGRST116') {
+            throw checkError;
+          }
+          
+          if (existingPosition) {
+            this.logger.info(`Found existing chord_position: ${chordPositionFullName}`);
+            // Update existing record with new URL
+            const updateField = theme === 'light' ? 'aws_svg_url_light' : 'aws_svg_url_dark';
+            const { error: updateError } = await supabase
+              .from('chord_positions')
+              .update({ [updateField]: result.url })
+              .eq('id', existingPosition.id);
+            
+            if (updateError) throw updateError;
+            this.logger.success(`Updated ${theme} URL for ${chordPositionFullName}`);
+          } else {
+            // Create new chord_position
+            const { data: newPosition, error: createError } = await supabase
+              .from('chord_positions')
+              .insert([{
+                chord_variation_id: variationId,
+                chord_name: chordName,
+                fret_position: positionType,
+                chord_position_full_name: chordPositionFullName,
+                position_type: 'open',
+                strings: ['E', 'A', 'D', 'G', 'B', 'E'],
+                frets: ['0', '0', '0', '0', '0', '0'],
+                fingering: ['0', '0', '0', '0', '0', '0'],
+                barre: false,
+                barre_fret: null,
+                aws_svg_url_light: theme === 'light' ? result.url : null,
+                aws_svg_url_dark: theme === 'dark' ? result.url : null,
+                metadata: {
+                  source: 'chord_library_generator',
+                  popularity: 'medium'
+                }
+              }])
+              .select()
+              .single();
+            
+            if (createError) throw createError;
+            
+            this.logger.success(`Created new chord_position: ${chordPositionFullName}`);
+            createdPositions++;
+          }
+        }
+      }
+      
+      this.logger.success(`Database integration complete`, {
+        createdVariations,
+        createdPositions,
+        totalProcessed: uploadResults.length
+      });
+      
+      return {
+        success: true,
+        message: 'Database integration completed successfully',
+        createdVariations,
+        createdPositions,
+        totalProcessed: uploadResults.length
+      };
+      
+    } catch (error) {
+      this.logger.error('Database integration failed', error);
+      throw error;
+    }
   }
 
   /**

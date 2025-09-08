@@ -37,8 +37,10 @@ async function updateChordUrlsToSvg() {
         continue
       }
       
-      const newLightUrl = `https://guitarmagic-chord-library.s3.us-west-2.amazonaws.com/${position.chord_position_full_name}_light.svg`
-      const newDarkUrl = `https://guitarmagic-chord-library.s3.us-west-2.amazonaws.com/${position.chord_position_full_name}_dark.svg`
+      // URL encode the chord position name to handle special characters like #, b, etc.
+      const encodedChordName = encodeURIComponent(position.chord_position_full_name)
+      const newLightUrl = `https://guitarmagic-chord-library.s3.us-west-2.amazonaws.com/${encodedChordName}_light.svg`
+      const newDarkUrl = `https://guitarmagic-chord-library.s3.us-west-2.amazonaws.com/${encodedChordName}_dark.svg`
       
       // Update the record
       const { error: updateError } = await supabase
@@ -53,6 +55,8 @@ async function updateChordUrlsToSvg() {
         console.error(`❌ Failed to update ${position.chord_position_full_name}:`, updateError)
       } else {
         console.log(`✅ Updated ${position.chord_position_full_name}`)
+        console.log(`   Original: ${position.chord_position_full_name}`)
+        console.log(`   Encoded: ${encodedChordName}`)
         console.log(`   Light: ${newLightUrl}`)
         console.log(`   Dark: ${newDarkUrl}`)
         updatedCount++

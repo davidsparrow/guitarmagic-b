@@ -27,7 +27,7 @@ import {
   transformUGDataToInternal, 
   testChordDataMapperUG, 
   getChordDataMapperStatus 
-} from './chordDataMapperUG.js'
+} from '../chord_processing/chordDataMapperUG.js'
 
 // Database infrastructure testing
 import { createClient } from '@supabase/supabase-js'

@@ -91,19 +91,21 @@ export const CHORD_LIBRARY_CONFIG = {
 
 /**
  * Generate S3 key for chord SVG
- * @param {string} chordName - Chord name (e.g., "Am", "C", "F")
+ * @param {string} chordName - Chord name (e.g., "Am", "C", "F", "D#")
  * @param {string} positionType - Position type (e.g., "open", "barre", "complex")
  * @param {string} theme - Theme ("light" or "dark")
  * @returns {string} S3 key path
  */
 export const generateS3Key = (chordName, positionType, theme) => {
   const { basePath, separator, extension } = CHORD_LIBRARY_CONFIG.naming;
-  return `${basePath}/${theme}/${chordName}${separator}${positionType}${extension}`;
+  // URL encode the chord name to handle special characters like #, b, etc.
+  const encodedChordName = encodeURIComponent(chordName);
+  return `${basePath}/${theme}/${encodedChordName}${separator}${positionType}${extension}`;
 };
 
 /**
  * Generate full S3 URL for chord SVG
- * @param {string} chordName - Chord name
+ * @param {string} chordName - Chord name (e.g., "Am", "C", "F", "D#")
  * @param {string} positionType - Position type  
  * @param {string} theme - Theme
  * @returns {string} Full S3 URL
@@ -122,6 +124,32 @@ export const generateS3URL = (chordName, positionType, theme) => {
 export const validateConfig = (config) => {
   const required = ['aws', 'svg', 'naming', 'urls'];
   return required.every(key => config[key] !== undefined);
+};
+
+/**
+ * Demonstrate URL encoding for chord names
+ * @param {string} chordName - Chord name to encode
+ * @returns {Object} Encoding demonstration
+ */
+export const demonstrateURLEncoding = (chordName) => {
+  const encoded = encodeURIComponent(chordName);
+  const lightKey = generateS3Key(chordName, 'open', 'light');
+  const darkKey = generateS3Key(chordName, 'open', 'dark');
+  const lightURL = generateS3URL(chordName, 'open', 'light');
+  const darkURL = generateS3URL(chordName, 'open', 'dark');
+  
+  return {
+    original: chordName,
+    encoded: encoded,
+    s3Keys: {
+      light: lightKey,
+      dark: darkKey
+    },
+    urls: {
+      light: lightURL,
+      dark: darkURL
+    }
+  };
 };
 
 export default CHORD_LIBRARY_CONFIG;
