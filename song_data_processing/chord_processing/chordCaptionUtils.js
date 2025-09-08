@@ -382,6 +382,17 @@ export const createChordCaption = async (chordData, favoriteId, userId) => {
       }
     }
     
+    // Lookup chord position if chord_name and fret_position are provided
+    let chordPositionId = null
+    if (chordData.chord_name && chordData.fret_position) {
+      chordPositionId = await lookupChordPosition(chordData.chord_name, chordData.fret_position)
+      if (chordPositionId) {
+        console.log(`✅ Found chord position for new chord: ${chordData.chord_name}-${chordData.fret_position} -> ${chordPositionId}`)
+      } else {
+        console.log(`ℹ️  No chord position found for new chord: ${chordData.chord_name}-${chordData.fret_position}`)
+      }
+    }
+    
     // Insert new chord caption
     const { data, error } = await supabase
       .from('chord_captions')
@@ -389,9 +400,11 @@ export const createChordCaption = async (chordData, favoriteId, userId) => {
         favorite_id: favoriteId,
         user_id: userId,
         chord_name: chordData.chord_name,
+        fret_position: chordData.fret_position || null,
         start_time: chordData.start_time,
         end_time: chordData.end_time,
         chord_data: chordData.chord_data || null,
+        chord_position_id: chordPositionId,
         display_order: newDisplayOrder,
         serial_number: nextSerialNumber,
         sync_group_id: null,
@@ -470,6 +483,19 @@ export const updateChordCaption = async (chordId, updates, favoriteId) => {
       }
       
       updates.display_order = newDisplayOrder
+    }
+    
+    // Lookup chord position if chord_name and fret_position are being updated
+    let chordPositionId = null
+    if (updates.chord_name && updates.fret_position) {
+      chordPositionId = await lookupChordPosition(updates.chord_name, updates.fret_position)
+      if (chordPositionId) {
+        console.log(`✅ Found chord position for updated chord: ${updates.chord_name}-${updates.fret_position} -> ${chordPositionId}`)
+        updates.chord_position_id = chordPositionId
+      } else {
+        console.log(`ℹ️  No chord position found for updated chord: ${updates.chord_name}-${updates.fret_position}`)
+        updates.chord_position_id = null
+      }
     }
     
     // Update the chord caption
@@ -929,6 +955,171 @@ export const getPreviousActiveChord = (chords, currentTimeSeconds) => {
   }).sort((a, b) => parseTimeToSeconds(b.end_time) - parseTimeToSeconds(a.end_time))
   
   return pastChords.length > 0 ? pastChords[0] : null
+}
+
+/**
+ * 🔗 CHORD POSITION LOOKUP FUNCTIONALITY
+ */
+
+/**
+ * Lookup chord position by chord name and fret position
+ * Matches chord_name + fret_position to chord_position_full_name
+ * 
+ * @param {string} chordName - The chord name (e.g., "A#", "C", "F7sus4")
+ * @param {string} fretPosition - The fret position (e.g., "Pos2", "Open", "Pos6")
+ * @returns {Promise<string|null>} - The chord_position_id if found, null if not found
+ */
+export const lookupChordPosition = async (chordName, fretPosition) => {
+  try {
+    if (!chordName || !fretPosition) {
+      console.log(`ℹ️  Missing chord name or fret position: chordName="${chordName}", fretPosition="${fretPosition}"`)
+      return null
+    }
+    
+    // Build the chord_position_full_name (e.g., "A#-Pos3v2")
+    const chordPositionFullName = `${chordName}-${fretPosition}`
+    
+    console.log(`🔍 Looking up chord position: "${chordPositionFullName}"`)
+    
+    const { data, error } = await supabase
+      .from('chord_positions')
+      .select('id, chord_position_full_name')
+      .eq('chord_position_full_name', chordPositionFullName)
+      .single()
+    
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No matching record found
+        console.log(`ℹ️  No chord position found for: "${chordPositionFullName}"`)
+        return null
+      }
+      throw error
+    }
+    
+    console.log(`✅ Found chord position: "${chordPositionFullName}" -> ID: ${data.id}`)
+    return data.id
+    
+  } catch (error) {
+    console.error(`❌ Error looking up chord position "${chordName}-${fretPosition}":`, error)
+    return null
+  }
+}
+
+/**
+ * Link a single chord caption to its corresponding chord position
+ * 
+ * @param {Object} chordCaption - The chord caption object
+ * @returns {Promise<boolean>} - True if successfully linked, false otherwise
+ */
+export const linkChordCaptionToPosition = async (chordCaption) => {
+  try {
+    if (!chordCaption.id || !chordCaption.chord_name || !chordCaption.fret_position) {
+      console.log(`ℹ️  Skipping chord caption ${chordCaption.id}: missing required fields`)
+      return false
+    }
+    
+    // Skip if already linked
+    if (chordCaption.chord_position_id) {
+      console.log(`ℹ️  Chord caption ${chordCaption.id} already linked to position ${chordCaption.chord_position_id}`)
+      return true
+    }
+    
+    // Lookup the chord position
+    const chordPositionId = await lookupChordPosition(chordCaption.chord_name, chordCaption.fret_position)
+    
+    if (!chordPositionId) {
+      console.log(`⚠️  No chord position found for chord caption ${chordCaption.id}: ${chordCaption.chord_name}-${chordCaption.fret_position}`)
+      return false
+    }
+    
+    // Update the chord caption with the chord_position_id
+    const { error } = await supabase
+      .from('chord_captions')
+      .update({ chord_position_id: chordPositionId })
+      .eq('id', chordCaption.id)
+    
+    if (error) {
+      console.error(`❌ Error linking chord caption ${chordCaption.id}:`, error)
+      return false
+    }
+    
+    console.log(`✅ Successfully linked chord caption ${chordCaption.id} to position ${chordPositionId}`)
+    return true
+    
+  } catch (error) {
+    console.error(`❌ Error in linkChordCaptionToPosition for chord ${chordCaption.id}:`, error)
+    return false
+  }
+}
+
+/**
+ * Link all chord captions to their corresponding chord positions
+ * 
+ * @param {Array} chordCaptions - Array of chord caption objects
+ * @returns {Promise<Object>} - { success: boolean, linkedCount: number, totalCount: number, errors: Array }
+ */
+export const linkAllChordCaptionsToPositions = async (chordCaptions) => {
+  try {
+    console.log(`🔗 Starting chord position lookup for ${chordCaptions.length} chord captions...`)
+    
+    // Filter chord captions that need linking
+    const chordsToLink = chordCaptions.filter(chord => 
+      chord.chord_name && 
+      chord.fret_position && 
+      !chord.chord_position_id
+    )
+    
+    if (chordsToLink.length === 0) {
+      console.log('ℹ️  No chord captions need linking')
+      return { 
+        success: true, 
+        linkedCount: 0, 
+        totalCount: chordCaptions.length, 
+        errors: [] 
+      }
+    }
+    
+    console.log(`🔍 Linking ${chordsToLink.length} chord captions...`)
+    
+    let linkedCount = 0
+    const errors = []
+    
+    // Process each chord caption
+    for (const chord of chordsToLink) {
+      try {
+        const success = await linkChordCaptionToPosition(chord)
+        if (success) {
+          linkedCount++
+        }
+      } catch (error) {
+        console.error(`❌ Error processing chord caption ${chord.id}:`, error)
+        errors.push({
+          chordId: chord.id,
+          chordName: chord.chord_name,
+          fretPosition: chord.fret_position,
+          error: error.message
+        })
+      }
+    }
+    
+    console.log(`✅ Chord position lookup completed: ${linkedCount}/${chordsToLink.length} linked successfully`)
+    
+    return {
+      success: true,
+      linkedCount,
+      totalCount: chordCaptions.length,
+      errors
+    }
+    
+  } catch (error) {
+    console.error('❌ Error in linkAllChordCaptionsToPositions:', error)
+    return {
+      success: false,
+      linkedCount: 0,
+      totalCount: chordCaptions.length,
+      errors: [{ error: error.message }]
+    }
+  }
 }
 
 /**

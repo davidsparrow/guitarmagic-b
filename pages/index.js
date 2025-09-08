@@ -111,7 +111,7 @@ export default function Home() {
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `url('/images/gt_splashBG_dark.png')`,
+          backgroundImage: `url('/images/gt_splashBG_1200_dark2.png')`,
           width: '100%',
           height: '100%',
           minWidth: '100vw',

@@ -32,7 +32,8 @@ import {
   updateChordCaption as updateChordInDB,
   deleteChordCaption as deleteChordInDB,
   deleteAllChordCaptionsForFavorite,
-  parseTimeToSeconds
+  parseTimeToSeconds,
+  linkAllChordCaptionsToPositions
 } from '../song_data_processing/chord_processing/chordCaptionUtils'
 import { supabase } from '../lib/supabase/client'
 
@@ -774,6 +775,52 @@ export const ChordCaptionModal = ({
     const durationSeconds = originalEndSeconds - startSeconds;
     return formatTimeToTimeString(startSeconds + durationSeconds);
   };
+
+  /**
+   * Handle lookup and linking of all chord captions to their chord positions
+   * This function is called when the user clicks the main SAVE button
+   */
+  const handleLookupAndLinkAllChords = async () => {
+    try {
+      console.log('🔍 Starting chord position lookup for all chord captions...')
+      
+      // Skip lookup if no chords exist
+      if (!chords || chords.length === 0) {
+        console.log('ℹ️  No chord captions to lookup')
+        return
+      }
+      
+      // Skip lookup if in test mode
+      if (videoId.includes('test-')) {
+        console.log('ℹ️  Skipping chord position lookup in test mode')
+        return
+      }
+      
+      // Call the lookup function from chordCaptionUtils
+      const result = await linkAllChordCaptionsToPositions(chords)
+      
+      if (result.success) {
+        console.log(`✅ Chord position lookup completed: ${result.linkedCount}/${result.totalCount} chord captions linked`)
+        
+        // If any chords were linked, reload the chord captions to get updated data
+        if (result.linkedCount > 0) {
+          console.log('🔄 Reloading chord captions to get updated chord_position_id data...')
+          await loadChordCaptions()
+        }
+        
+        // Log any errors that occurred
+        if (result.errors && result.errors.length > 0) {
+          console.warn(`⚠️  ${result.errors.length} errors occurred during lookup:`, result.errors)
+        }
+      } else {
+        console.error('❌ Chord position lookup failed:', result.errors)
+      }
+      
+    } catch (error) {
+      console.error('❌ Error during chord position lookup:', error)
+      // Don't show error to user, just log it
+    }
+  };
   
   if (!showChordModal) return null
   
@@ -851,11 +898,17 @@ export const ChordCaptionModal = ({
               <span>CANCEL</span>
             </button>
             
-            {/* Save Button */}
+            {/* Save Button - LOOKUP + CLOSE MODAL */}
             <button
-              onClick={() => setShowChordModal(false)}
+              onClick={async () => {
+                // NEW: Lookup and link chord positions
+                await handleLookupAndLinkAllChords()
+                
+                // EXISTING: Close modal
+                setShowChordModal(false)
+              }}
               className="w-20 px-3 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm flex items-center justify-center space-x-1"
-              title="Save and close modal"
+              title="Lookup chord positions and close modal"
             >
               <CiSaveDown1 className="w-6 h-6" />
               <span>Save</span>
