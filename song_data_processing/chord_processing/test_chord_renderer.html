@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎸 Chord Renderer Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .chord-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .chord-diagram {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .chord-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .svg-container {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background: white;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎸 Chord Diagram Renderer Test</h1>
+    <p style="text-align: center; color: #666; margin-bottom: 30px;">
+        Testing the Two.js-based chord diagram renderer with real chord data
+    </p>
+    
+    <div class="chord-container" id="chordContainer">
+        <!-- Chord diagrams will be rendered here -->
+    </div>
+
+    <script type="module">
+        import { ChordDiagramRenderer } from './chordRenderer.js'
+import { generateChordData } from './chordData.js'
+
+        console.log('🎸 Testing Chord Renderer in Browser...')
+
+        // Test chords
+        const testChords = [
+            { name: 'Am', zone: 'open' },
+            { name: 'C', zone: 'open' },
+            { name: 'F', zone: 'open' },
+            { name: 'G', zone: 'open' }
+        ]
+
+        const container = document.getElementById('chordContainer')
+        const renderer = new ChordDiagramRenderer()
+
+        testChords.forEach(({ name, zone }) => {
+            try {
+                const chordData = generateChordData(name)
+                if (chordData) {
+                    console.log(`🎯 Rendering ${name} chord:`, chordData)
+                    
+                    const svgOutput = renderer.renderChord(chordData, zone)
+                    
+                    const chordDiv = document.createElement('div')
+                    chordDiv.className = 'chord-diagram'
+                    
+                    chordDiv.innerHTML = `
+                        <div class="chord-title">${name} Chord (${zone} position)</div>
+                        <div class="svg-container">
+                            ${svgOutput}
+                        </div>
+                    `
+                    
+                    container.appendChild(chordDiv)
+                    console.log(`✅ ${name} chord rendered successfully`)
+                } else {
+                    console.warn(`⚠️ Could not generate data for ${name}`)
+                }
+            } catch (error) {
+                console.error(`❌ Error rendering ${name}:`, error)
+            }
+        })
+
+        console.log('🎉 Test completed!')
+    </script>
+</body>
+</html>
