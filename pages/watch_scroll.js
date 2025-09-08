@@ -1,5 +1,5 @@
 // pages/watch.js - Watch Page with YouTube Video Player
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useUser } from '../contexts/UserContext'
 import AuthModal from '../components/AuthModal'
@@ -221,10 +221,10 @@ export default function Watch() {
         throw favoriteError
       }
       
-      // Now get chord captions for this favorite
+      // Now get chord captions for this favorite, joined with chord_positions via chord_position_id
       const { data, error } = await supabase
         .from('chord_captions')
-        .select('*')
+        .select('*, chord_positions:chord_position_id (id, chord_position_full_name, aws_svg_url_dark, aws_svg_url_light)')
         .eq('favorite_id', favoriteData.id)
         .order('start_time', { ascending: true })
       
@@ -1644,27 +1644,52 @@ export default function Watch() {
                 
                 {/* 3x2 Grid for SVG Images */}
                 <div className="h-full p-2 grid grid-cols-3 grid-rows-2 gap-1">
-                  {/* Row 1 */}
-                  <div className="bg-gray-800 border border-gray-600 rounded flex items-center justify-center">
-                    <div className="text-gray-400 text-xs">SVG 1</div>
-                  </div>
-                  <div className="bg-gray-800 border border-gray-600 rounded flex items-center justify-center">
-                    <div className="text-gray-400 text-xs">SVG 2</div>
-                  </div>
-                  <div className="bg-gray-800 border border-gray-600 rounded flex items-center justify-center">
-                    <div className="text-gray-400 text-xs">SVG 3</div>
-                  </div>
-                  
-                  {/* Row 2 */}
-                  <div className="bg-gray-800 border border-gray-600 rounded flex items-center justify-center">
-                    <div className="text-gray-400 text-xs">SVG 4</div>
-                  </div>
-                  <div className="bg-gray-800 border border-gray-600 rounded flex items-center justify-center">
-                    <div className="text-gray-400 text-xs">SVG 5</div>
-                  </div>
-                  <div className="bg-gray-800 border border-gray-600 rounded flex items-center justify-center">
-                    <div className="text-gray-400 text-xs">SVG 6</div>
-                  </div>
+                  {(() => {
+                    try {
+                      const nowSeconds = (() => {
+                        if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
+                          return playerRef.current.getCurrentTime()
+                        }
+                        return 0
+                      })()
+
+                      const active = (chordCaptions || []).filter((chord) => {
+                        if (!chord || !chord.start_time || !chord.end_time) return false
+                        const start = timeToSeconds(chord.start_time)
+                        const end = timeToSeconds(chord.end_time)
+                        return nowSeconds >= start && nowSeconds <= end
+                      })
+                      // Map to entries with URLs
+                      const svgEntries = active
+                        .map((c) => {
+                          const pos = c.chord_positions
+                          const url = pos?.aws_svg_url_dark || null
+                          if (!c.chord_position_id || !pos || !url) {
+                            if (!pos || !url) {
+                              console.warn(`⚠️ Missing chord position URL for chord ${c.id} (${c.chord_name} ${c.fret_position || ''})`)
+                            }
+                            return null
+                          }
+                          return { id: c.id, name: c.chord_name, url }
+                        })
+                        .filter(Boolean)
+
+                      if (svgEntries.length > 6) {
+                        console.error(`⚠️ More than 6 active chord diagrams (${svgEntries.length}). Showing first 6.`)
+                      }
+
+                      const toRender = svgEntries.slice(0, 6)
+
+                      return toRender.map((entry) => (
+                        <div key={entry.id} className="bg-gray-900 border border-gray-700 rounded flex items-center justify-center p-1">
+                          <img src={entry.url} alt={entry.name || 'Chord'} className="w-full h-full object-contain" />
+                        </div>
+                      ))
+                    } catch (err) {
+                      console.error('Error rendering chord SVG grid:', err)
+                      return null
+                    }
+                  })()}
                 </div>
               </div>
             </div>
