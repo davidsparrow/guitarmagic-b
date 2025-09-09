@@ -16,9 +16,39 @@ export const useUser = () => {
 export const UserProvider = ({ children }) => {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [dailyLimits, setDailyLimits] = useState(null)
 
   // Get user from AuthContext
   const { user } = useAuth()
+
+  // Fetch daily limits from admin_settings
+  const fetchDailyLimits = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('setting_value')
+        .eq('setting_key', 'feature_gates')
+        .single()
+
+      if (error) throw error
+
+      if (data?.setting_value) {
+        setDailyLimits({
+          daily_search_limits: data.setting_value.daily_search_limits || { freebird: 8, roadie: 24, hero: 100 },
+          daily_watch_time_limits: data.setting_value.daily_watch_time_limits || { freebird: 60, roadie: 180, hero: 480 },
+          favorite_limits: data.setting_value.favorite_limits || { freebird: 0, roadie: 12, hero: -1 }
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching daily limits:', error)
+      // Fallback to default values
+      setDailyLimits({
+        daily_search_limits: { freebird: 8, roadie: 24, hero: 100 },
+        daily_watch_time_limits: { freebird: 60, roadie: 180, hero: 480 },
+        favorite_limits: { freebird: 0, roadie: 12, hero: -1 }
+      })
+    }
+  }
 
   // Fetch profile when user changes
   useEffect(() => {
@@ -28,6 +58,11 @@ export const UserProvider = ({ children }) => {
       setProfile(null)
     }
   }, [user])
+
+  // Fetch daily limits on mount
+  useEffect(() => {
+    fetchDailyLimits()
+  }, [])
 
   // Daily search reset logic - check if we need to reset daily counts
   useEffect(() => {
@@ -76,19 +111,15 @@ export const UserProvider = ({ children }) => {
 
   // Daily search limit management
   const getDailySearchLimit = () => {
-    const limit = (() => {
-      switch (profile?.subscription_tier) {
-        case 'freebird': return 0;      // Free users: 0 searches
-        case 'roadie': return 36;       // Roadie users: 36 searches (from pricing.js)
-        case 'hero': return 999999;     // Hero users: unlimited
-        default: return 0;
-      }
-    })();
+    if (!dailyLimits || !profile?.subscription_tier) return 0;
+    
+    const limit = dailyLimits.daily_search_limits?.[profile.subscription_tier] || 0;
     
     console.log('🔍 getDailySearchLimit:', {
       userTier: profile?.subscription_tier,
       dailyLimit: limit,
-      dailyUsed: profile?.daily_searches_used || 0
+      dailyUsed: profile?.daily_searches_used || 0,
+      limitsFromDB: dailyLimits.daily_search_limits
     });
     
     return limit;
@@ -97,17 +128,29 @@ export const UserProvider = ({ children }) => {
   const checkDailySearchLimit = () => {
     const limit = getDailySearchLimit();
     const used = profile?.daily_searches_used || 0;
-    const canSearch = limit === 999999 ? true : used < limit;
+    const canSearch = limit === -1 ? true : used < limit; // -1 means unlimited
     
     console.log('🔍 checkDailySearchLimit:', {
       userTier: profile?.subscription_tier,
       dailyLimit: limit,
       dailyUsed: used,
       canSearch: canSearch,
-      remaining: limit === 999999 ? 'UNLIMITED' : Math.max(0, limit - used)
+      remaining: limit === -1 ? 'UNLIMITED' : Math.max(0, limit - used)
     });
     
     return canSearch;
+  }
+
+  // Get daily watch time limit
+  const getDailyWatchTimeLimit = () => {
+    if (!dailyLimits || !profile?.subscription_tier) return 60;
+    return dailyLimits.daily_watch_time_limits?.[profile.subscription_tier] || 60;
+  }
+
+  // Get favorite limit
+  const getFavoriteLimit = () => {
+    if (!dailyLimits || !profile?.subscription_tier) return 0;
+    return dailyLimits.favorite_limits?.[profile.subscription_tier] || 0;
   }
 
   const incrementDailySearchCount = async () => {
@@ -175,11 +218,14 @@ export const UserProvider = ({ children }) => {
     dailySearchesUsed: profile?.daily_searches_used || 0,
     searchLimit: getDailySearchLimit(),
     
-    // Daily search management
+    // Daily limits management
     getDailySearchLimit,
+    getDailyWatchTimeLimit,
+    getFavoriteLimit,
     checkDailySearchLimit,
     incrementDailySearchCount,
     resetDailySearchCount,
+    dailyLimits,
     
     // Actions
     fetchUserProfile,

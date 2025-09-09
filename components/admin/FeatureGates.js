@@ -40,10 +40,13 @@ export default function FeatureGates() {
         console.error('Error loading error messages:', errorMessagesError)
       }
 
-      // Combine both configurations
+      // Combine both configurations with default daily limits
       const combinedConfig = {
         ...(featureGatesData?.setting_value || {}),
-        error_messages: errorMessagesData?.setting_value || {}
+        error_messages: errorMessagesData?.setting_value || {},
+        daily_search_limits: featureGatesData?.setting_value?.daily_search_limits || { freebird: 10, roadie: 30, hero: 100 },
+        daily_watch_time_limits: featureGatesData?.setting_value?.daily_watch_time_limits || { freebird: 60, roadie: 180, hero: 480 },
+        favorite_limits: featureGatesData?.setting_value?.favorite_limits || { freebird: 0, roadie: 12, hero: -1 }
       }
 
       setFeatureGates(combinedConfig)
@@ -71,7 +74,9 @@ export default function FeatureGates() {
           setting_value: {
             feature_gates: featureGates.feature_gates,
             global_settings: featureGates.global_settings,
-            daily_limits: featureGates.daily_limits
+            daily_search_limits: featureGates.daily_search_limits || { freebird: 10, roadie: 30, hero: 100 },
+            daily_watch_time_limits: featureGates.daily_watch_time_limits || { freebird: 60, roadie: 180, hero: 480 },
+            favorite_limits: featureGates.favorite_limits || { freebird: 0, roadie: 12, hero: -1 }
           },
           updated_at: new Date().toISOString()
         })
@@ -134,6 +139,16 @@ export default function FeatureGates() {
       error_messages: {
         ...prev.error_messages,
         [key]: value
+      }
+    }))
+  }
+
+  const updateDailyLimit = (limitType, tier, value) => {
+    setFeatureGates(prev => ({
+      ...prev,
+      [limitType]: {
+        ...prev[limitType],
+        [tier]: parseInt(value) || 0
       }
     }))
   }
@@ -243,6 +258,150 @@ export default function FeatureGates() {
               placeholder="An internal error has occurred: "
             />
             <p className="text-xs text-gray-500 mt-1">Intro text shown before caption trimming error details</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Daily Limits */}
+      <div className="mb-8 p-4 bg-blue-50 rounded-lg">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Daily Limits</h3>
+        <div className="space-y-6">
+          {/* Daily Search Limits */}
+          <div>
+            <h4 className="text-md font-medium text-blue-900 mb-3">Daily Search Limits</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-blue-700 mb-2">
+                  Freebird (Free)
+                </label>
+                <input
+                  type="number"
+                  value={featureGates?.daily_search_limits?.freebird || featureGates?.daily_search_limits?.free || 10}
+                  onChange={(e) => updateDailyLimit('daily_search_limits', 'freebird', e.target.value)}
+                  className="w-full px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="0"
+                />
+                <p className="text-xs text-blue-600 mt-1">searches per day</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-blue-700 mb-2">
+                  Roadie
+                </label>
+                <input
+                  type="number"
+                  value={featureGates?.daily_search_limits?.roadie || 30}
+                  onChange={(e) => updateDailyLimit('daily_search_limits', 'roadie', e.target.value)}
+                  className="w-full px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="0"
+                />
+                <p className="text-xs text-blue-600 mt-1">searches per day</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-blue-700 mb-2">
+                  Hero
+                </label>
+                <input
+                  type="number"
+                  value={featureGates?.daily_search_limits?.hero || 100}
+                  onChange={(e) => updateDailyLimit('daily_search_limits', 'hero', e.target.value)}
+                  className="w-full px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="0"
+                />
+                <p className="text-xs text-blue-600 mt-1">searches per day</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Daily Watch Time Limits */}
+          <div>
+            <h4 className="text-md font-medium text-blue-900 mb-3">Daily Watch Time Limits (minutes)</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-blue-700 mb-2">
+                  Freebird (Free)
+                </label>
+                <input
+                  type="number"
+                  value={featureGates?.daily_watch_time_limits?.freebird || featureGates?.daily_watch_time_limits?.free || 60}
+                  onChange={(e) => updateDailyLimit('daily_watch_time_limits', 'freebird', e.target.value)}
+                  className="w-full px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="0"
+                />
+                <p className="text-xs text-blue-600 mt-1">minutes per day</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-blue-700 mb-2">
+                  Roadie
+                </label>
+                <input
+                  type="number"
+                  value={featureGates?.daily_watch_time_limits?.roadie || 180}
+                  onChange={(e) => updateDailyLimit('daily_watch_time_limits', 'roadie', e.target.value)}
+                  className="w-full px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="0"
+                />
+                <p className="text-xs text-blue-600 mt-1">minutes per day</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-blue-700 mb-2">
+                  Hero
+                </label>
+                <input
+                  type="number"
+                  value={featureGates?.daily_watch_time_limits?.hero || 480}
+                  onChange={(e) => updateDailyLimit('daily_watch_time_limits', 'hero', e.target.value)}
+                  className="w-full px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="0"
+                />
+                <p className="text-xs text-blue-600 mt-1">minutes per day</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Favorite Limits */}
+          <div>
+            <h4 className="text-md font-medium text-blue-900 mb-3">Favorite Limits</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-blue-700 mb-2">
+                  Freebird (Free)
+                </label>
+                <input
+                  type="number"
+                  value={featureGates?.favorite_limits?.freebird || featureGates?.favorite_limits?.free || 0}
+                  onChange={(e) => updateDailyLimit('favorite_limits', 'freebird', e.target.value)}
+                  className="w-full px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="0"
+                />
+                <p className="text-xs text-blue-600 mt-1">favorites saved</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-blue-700 mb-2">
+                  Roadie
+                </label>
+                <input
+                  type="number"
+                  value={featureGates?.favorite_limits?.roadie || 12}
+                  onChange={(e) => updateDailyLimit('favorite_limits', 'roadie', e.target.value)}
+                  className="w-full px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="0"
+                />
+                <p className="text-xs text-blue-600 mt-1">favorites saved</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-blue-700 mb-2">
+                  Hero
+                </label>
+                <input
+                  type="number"
+                  value={featureGates?.favorite_limits?.hero || -1}
+                  onChange={(e) => updateDailyLimit('favorite_limits', 'hero', e.target.value)}
+                  className="w-full px-3 py-2 border border-blue-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="-1"
+                />
+                <p className="text-xs text-blue-600 mt-1">favorites saved (-1 = unlimited)</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

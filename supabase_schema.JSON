@@ -1,5 +1,3 @@
-/*Updated 09-07-2025 10:40 PM */
-
 [
   {
     "table_name": "admin_settings",
@@ -614,6 +612,13 @@
     "table_name": "chord_positions",
     "column_name": "chord_position_full_name",
     "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "chord_positions",
+    "column_name": "fret_finger_data",
+    "data_type": "jsonb",
     "is_nullable": "YES",
     "column_default": null
   },

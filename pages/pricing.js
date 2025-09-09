@@ -16,6 +16,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
   const [mounted, setMounted] = useState(false)
   const [showMenuModal, setShowMenuModal] = useState(false)
+  const [currentCarouselPage, setCurrentCarouselPage] = useState(0)
   const searchInputRef = useRef(null)
   const router = useRouter()
   
@@ -38,6 +39,17 @@ export default function Home() {
       initStripe()
     }
   }, [])
+
+  // Auto-advance carousel every 20 seconds
+  useEffect(() => {
+    if (!mounted) return
+    
+    const interval = setInterval(() => {
+      setCurrentCarouselPage((prevPage) => (prevPage + 1) % 3)
+    }, 20000) // 20 seconds
+    
+    return () => clearInterval(interval)
+  }, [mounted])
   // REMOVED: Smart redirect logic for authenticated users
   // Users need to be able to access the pricing page to select plans!
 
@@ -193,15 +205,13 @@ export default function Home() {
     )
   }
   return (
-    <div className="relative h-screen overflow-hidden bg-black" style={{ 
+    <div className="relative min-h-screen bg-black" style={{ 
       backgroundColor: '#000000',
-      minHeight: '100vh',
-      width: '100vw',
-      overflow: 'hidden'
+      width: '100vw'
     }}>
       {/* Full-Screen Background - NEW DARK IMAGE */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat hidden md:block"
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat hidden md:block"
         style={{
           backgroundImage: `url('/images/gt_splashBG_dark.png')`,
           width: '100%',
@@ -210,18 +220,20 @@ export default function Home() {
           minHeight: '100vh',
         }}
       />
-      {/* Header Component */}
-      <Header 
-        showBrainIcon={true}
-        showSearchIcon={false}
-        onAuthClick={handleAuthClick}
-        onMenuClick={() => setShowMenuModal(true)}
-        isAuthenticated={isAuthenticated}
-      />
+      {/* Header Component - Sticky */}
+      <div className="sticky top-0 z-50">
+        <Header 
+          showBrainIcon={true}
+          showSearchIcon={false}
+          onAuthClick={handleAuthClick}
+          onMenuClick={() => setShowMenuModal(true)}
+          isAuthenticated={isAuthenticated}
+        />
+      </div>
       {/* Main Content - Pricing */}
-      <div className="relative z-10 flex flex-col items-center justify-center px-6 mt-16 md:mt-20" style={{ 
-        height: 'calc(100vh - 120px)',
-        backgroundColor: 'transparent'
+      <div className="relative z-10 flex flex-col items-center px-6 pt-8 pb-24" style={{ 
+        backgroundColor: 'transparent',
+        minHeight: 'calc(100vh - 80px)'
       }}>
         <div className="max-w-4xl w-full rounded-2xl p-8 text-white overflow-y-auto max-h-full pb-24" style={{ 
           fontFamily: 'Poppins, sans-serif',
@@ -271,7 +283,7 @@ export default function Home() {
               <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold">
                 No credit card
               </div>
-              <div className="mb-6">
+              <div className="mb-6 mt-4">
                 <div className="-mt-2">
                   <h3 className="text-2xl font-bold text-left">Freebird</h3>
                   <div className="text-gray-400 font-bold text-base">free</div>
@@ -301,13 +313,13 @@ export default function Home() {
               </div>
               <div className="mt-6 space-y-2 text-sm text-gray-400">
                 <div>max faves: <span className="text-white">0</span></div>
-                <div>max daily searches: <span className="text-white">12</span></div>
+                <div>max daily searches: <span className="text-white">8</span></div>
                 <div>max daily watch time: <span className="text-white">1 Hr.</span></div>
               </div>
               <button 
                 onClick={handleFreePlanSelection}
                 disabled={isLoading}
-                className="w-full mt-6 bg-gray-700 text-white py-3 rounded-lg hover:bg-gray-600 transition-colors flex items-center justify-center space-x-2"
+                className="w-full mt-8 mb-4 bg-gray-700 text-white py-3 rounded-lg hover:bg-gray-600 transition-colors flex items-center justify-center space-x-2"
               >
                 {isLoading ? (
                   <div className="flex items-center space-x-2">
@@ -347,7 +359,7 @@ export default function Home() {
               <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold">
                 30-day Free Trial
               </div>
-              <div className="mb-6">
+              <div className="mb-6 mt-4">
                 <div className="-mt-2">
                   <h3 className="text-2xl font-bold text-left">Roadie</h3>
                   <div className="text-yellow-400 font-bold text-base">
@@ -379,14 +391,14 @@ export default function Home() {
               </div>
               <div className="mt-6 space-y-2 text-sm text-gray-400">
                 <div>max faves: <span className="text-yellow-400">12</span></div>
-                <div>max daily searches: <span className="text-yellow-400">36</span></div>
+                <div>max daily searches: <span className="text-yellow-400">24</span></div>
                 <div>max daily watch time: <span className="text-yellow-400">3 Hrs.</span></div>
               </div>
               
               <button 
                 onClick={() => handleCheckout('roadie')}
                 disabled={isLoading}
-                className="w-full mt-6 bg-yellow-500 text-black py-3 rounded-lg hover:bg-yellow-400 transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                className="w-full mt-8 mb-4 bg-yellow-500 text-black py-3 rounded-lg hover:bg-yellow-400 transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
                 {isLoading ? (
                   <div className="flex items-center space-x-2">
@@ -415,7 +427,7 @@ export default function Home() {
               <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold">
                 30-day Free Trial
               </div>
-              <div className="mb-6">
+              <div className="mb-6 mt-4">
                 <div className="-mt-2">
                   <h3 className="text-2xl font-bold text-left">Hero</h3>
                   <div className="font-bold text-base" style={{ color: '#8dc641' }}>
@@ -447,14 +459,14 @@ export default function Home() {
               </div>
               <div className="mt-6 space-y-2 text-sm text-gray-400">
                 <div>max faves: <span style={{ color: '#8dc641' }}>UNLIMITED</span></div>
-                <div>max daily searches: <span style={{ color: '#8dc641' }}>UNLIMITED</span></div>
+                <div>max daily searches: <span style={{ color: '#8dc641' }}>100</span></div>
                 <div>max daily watch time: <span style={{ color: '#8dc641' }}>8 Hrs.</span></div>
               </div>
               
               <button 
                 onClick={() => handleCheckout('hero')}
                 disabled={isLoading}
-                className="w-full mt-6 text-black py-3 rounded-lg transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                className="w-full mt-8 mb-4 text-black py-3 rounded-lg transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 style={{ backgroundColor: '#8dc641' }}
               >
                 {isLoading ? (
@@ -466,6 +478,238 @@ export default function Home() {
                   'GO BROKE'
                 )}
               </button>
+            </div>
+          </div>
+          
+          {/* Review Cards Carousel */}
+          <div className="mt-12">
+            {/* Carousel Container */}
+            <div className="relative">
+              {/* Review Cards - Page 1 of 3 */}
+              {currentCarouselPage === 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Review Card 1 */}
+                  <div className="p-4 text-center">
+                    <div className="flex justify-center mb-2">
+                      <div className="flex space-x-1">
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <p className="text-white text-sm leading-relaxed px-2">
+                        The Roadie plan is perfect for my practice routine. 24 daily searches and 3 hours of watch time is exactly what I need!
+                      </p>
+                    </div>
+                    <div className="mt-2 text-right">
+                      <p className="text-white/70 text-xs italic">Sarah - Guitar Student</p>
+                    </div>
+                  </div>
+
+                  {/* Review Card 2 */}
+                  <div className="p-4 text-center">
+                    <div className="flex justify-center mb-2">
+                      <div className="flex space-x-1">
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <p className="text-white text-sm leading-relaxed px-2">
+                        Best $10 I've ever spent on guitar learning. The custom loops feature alone is worth the price!
+                      </p>
+                    </div>
+                    <div className="mt-2 text-right">
+                      <p className="text-white/70 text-xs italic">Mike - Rock Guitarist</p>
+                    </div>
+                  </div>
+
+                  {/* Review Card 3 */}
+                  <div className="p-4 text-center">
+                    <div className="flex justify-center mb-2">
+                      <div className="flex space-x-1">
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <p className="text-white text-sm leading-relaxed px-2">
+                        Started with Freebird to test it out, upgraded to Hero within a week. The value is incredible!
+                      </p>
+                    </div>
+                    <div className="mt-2 text-right">
+                      <p className="text-white/70 text-xs italic">Alex - Beginner Guitarist</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Review Cards - Page 2 of 3 */}
+              {currentCarouselPage === 1 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Review Card 4 */}
+                  <div className="p-4 text-center">
+                    <div className="flex justify-center mb-2">
+                      <div className="flex space-x-1">
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <p className="text-white text-sm leading-relaxed px-2">
+                        The login resume feature is a game-changer. I can pick up exactly where I left off on any device!
+                      </p>
+                    </div>
+                    <div className="mt-2 text-right">
+                      <p className="text-white/70 text-xs italic">Emma - Folk Guitarist</p>
+                    </div>
+                  </div>
+
+                  {/* Review Card 5 */}
+                  <div className="p-4 text-center">
+                    <div className="flex justify-center mb-2">
+                      <div className="flex space-x-1">
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <p className="text-white text-sm leading-relaxed px-2">
+                        Custom captions with chord names have revolutionized my learning. Worth every penny!
+                      </p>
+                    </div>
+                    <div className="mt-2 text-right">
+                      <p className="text-white/70 text-xs italic">David - Working Professional</p>
+                    </div>
+                  </div>
+
+                  {/* Review Card 6 */}
+                  <div className="p-4 text-center">
+                    <div className="flex justify-center mb-2">
+                      <div className="flex space-x-1">
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <p className="text-white text-sm leading-relaxed px-2">
+                        The 30-day free trial let me test everything risk-free. Now I'm a Hero subscriber for life!
+                      </p>
+                    </div>
+                    <div className="mt-2 text-right">
+                      <p className="text-white/70 text-xs italic">Lisa - Visual Learner</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Review Cards - Page 3 of 3 */}
+              {currentCarouselPage === 2 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Review Card 7 */}
+                  <div className="p-4 text-center">
+                    <div className="flex justify-center mb-2">
+                      <div className="flex space-x-1">
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <p className="text-white text-sm leading-relaxed px-2">
+                        Hero plan gives me 100 daily searches and 8 hours daily. Perfect for my intensive practice sessions!
+                      </p>
+                    </div>
+                    <div className="mt-2 text-right">
+                      <p className="text-white/70 text-xs italic">Tom - Tab Reader</p>
+                    </div>
+                  </div>
+
+                  {/* Review Card 8 */}
+                  <div className="p-4 text-center">
+                    <div className="flex justify-center mb-2">
+                      <div className="flex space-x-1">
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <p className="text-white text-sm leading-relaxed px-2">
+                        The chord diagram selection tool is worth the upgrade alone. I can see exactly which chords to play!
+                      </p>
+                    </div>
+                    <div className="mt-2 text-right">
+                      <p className="text-white/70 text-xs italic">Rachel - Chord Learner</p>
+                    </div>
+                  </div>
+
+                  {/* Review Card 9 */}
+                  <div className="p-4 text-center">
+                    <div className="flex justify-center mb-2">
+                      <div className="flex space-x-1">
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                        <span className="text-yellow-400 text-lg">★</span>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <p className="text-white text-sm leading-relaxed px-2">
+                        GuitarTube has everything I need to learn guitar effectively. The pricing is incredibly fair!
+                      </p>
+                    </div>
+                    <div className="mt-2 text-right">
+                      <p className="text-white/70 text-xs italic">Chris - Guitar Enthusiast</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Carousel Navigation - Hidden on Mobile */}
+              <div className="hidden md:flex justify-center mt-4 space-x-2">
+                <button
+                  onClick={() => setCurrentCarouselPage(0)}
+                  className={`w-3 h-3 rounded-full transition-colors ${
+                    currentCarouselPage === 0 ? 'bg-yellow-400' : 'bg-white/30'
+                  }`}
+                />
+                <button
+                  onClick={() => setCurrentCarouselPage(1)}
+                  className={`w-3 h-3 rounded-full transition-colors ${
+                    currentCarouselPage === 1 ? 'bg-yellow-400' : 'bg-white/30'
+                  }`}
+                />
+                <button
+                  onClick={() => setCurrentCarouselPage(2)}
+                  className={`w-3 h-3 rounded-full transition-colors ${
+                    currentCarouselPage === 2 ? 'bg-yellow-400' : 'bg-white/30'
+                  }`}
+                />
+              </div>
             </div>
           </div>
         </div>

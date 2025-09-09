@@ -4,7 +4,7 @@ import { useUser } from '../contexts/UserContext'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function MenuModal({ isOpen, onClose, onSupportClick }) {
-  const { profile, userEmail } = useUser()
+  const { profile, userEmail, getDailySearchLimit, getDailyWatchTimeLimit, getFavoriteLimit } = useUser()
   const { isAuthenticated } = useAuth()
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showPlanModal, setShowPlanModal] = useState(false)
@@ -234,27 +234,37 @@ export default function MenuModal({ isOpen, onClose, onSupportClick }) {
               <div className="bg-gray-800/50 p-4 rounded-lg">
                 <p className="text-sm text-gray-400 mb-1">Daily Watch Limit</p>
                 <p className="font-medium text-xl">
-                  {profile?.subscription_tier === 'hero' ? '480 minutes (8 hours)' : 
-                   profile?.subscription_tier === 'roadie' ? '180 minutes (3 hours)' : 
-                   '60 minutes (1 hour)'}
+                  {(() => {
+                    const limit = getDailyWatchTimeLimit();
+                    if (limit === -1) return 'Unlimited';
+                    const hours = Math.floor(limit / 60);
+                    const minutes = limit % 60;
+                    return hours > 0 ? `${limit} minutes (${hours} hour${hours > 1 ? 's' : ''}${minutes > 0 ? ` ${minutes} min` : ''})` : `${limit} minutes`;
+                  })()}
                 </p>
               </div>
               
               <div className="bg-gray-800/50 p-4 rounded-lg">
                 <p className="text-sm text-gray-400 mb-1">Daily Search Limit</p>
                 <p className="font-medium text-xl">
-                  {profile?.subscription_tier === 'hero' ? 'Unlimited' : 
-                   profile?.subscription_tier === 'roadie' ? '20 searches' : 
-                   '0 searches (blocked)'}
+                  {(() => {
+                    const limit = getDailySearchLimit();
+                    if (limit === -1) return 'Unlimited';
+                    if (limit === 0) return '0 searches (blocked)';
+                    return `${limit} searches`;
+                  })()}
                 </p>
               </div>
               
               <div className="bg-gray-800/50 p-4 rounded-lg">
                 <p className="text-sm text-gray-400 mb-1">Saved Faves Limit</p>
                 <p className="font-medium text-xl">
-                  {profile?.subscription_tier === 'hero' ? 'Unlimited' : 
-                   profile?.subscription_tier === 'roadie' ? '12 faves' : 
-                   '0 faves (blocked)'}
+                  {(() => {
+                    const limit = getFavoriteLimit();
+                    if (limit === -1) return 'Unlimited';
+                    if (limit === 0) return '0 faves (blocked)';
+                    return `${limit} faves`;
+                  })()}
                 </p>
               </div>
               
